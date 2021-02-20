@@ -1,9 +1,11 @@
 package com.clientui.controller;
 
 import com.clientui.beans.CommandeBean;
+import com.clientui.beans.ExpeditionBean;
 import com.clientui.beans.PaiementBean;
 import com.clientui.beans.ProductBean;
 import com.clientui.proxies.MicroserviceCommandeProxy;
+import com.clientui.proxies.MicroserviceExpeditionProxy;
 import com.clientui.proxies.MicroservicePaiementProxy;
 import com.clientui.proxies.MicroserviceProduitsProxy;
 import org.slf4j.Logger;
@@ -13,12 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.*;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 
@@ -34,15 +36,18 @@ public class ClientController {
     @Autowired
     private MicroservicePaiementProxy paiementProxy;
 
+    @Autowired
+    private MicroserviceExpeditionProxy expeditionProxy;
+
 
     Logger log = LoggerFactory.getLogger(this.getClass());
 
     /*
-    * Étape (1)
-    * Opération qui récupère la liste des produits et on les affichent dans la page d'accueil.
-    * Les produits sont récupérés grâce à ProduitsProxy
-    * On fini par rentourner la page Accueil.html à laquelle on passe la liste d'objets "produits" récupérés.
-    * */
+     * Étape (1)
+     * Opération qui récupère la liste des produits et on les affichent dans la page d'accueil.
+     * Les produits sont récupérés grâce à ProduitsProxy
+     * On fini par rentourner la page Accueil.html à laquelle on passe la liste d'objets "produits" récupérés.
+     * */
     @RequestMapping("/")
     public String accueil(Model model){
 
@@ -63,7 +68,7 @@ public class ClientController {
     * On passe l'objet "produit" récupéré et qui contient les détails en question à  FicheProduit.html
     * */
     @RequestMapping("/details-produit/{id}")
-    public String ficheProduit(@PathVariable int id,  Model model){
+    public String ficheProduit(@PathVariable int id, Model model) {
 
         ProductBean produit = ProduitsProxy.recupererUnProduit(id);
 
@@ -72,12 +77,20 @@ public class ClientController {
         return "FicheProduit";
     }
 
+    @GetMapping(value = "/suivi/{commandId}")
+    public String suivi(@PathVariable int commandId, Model model) {
+        ExpeditionBean expedition = expeditionProxy.getStatus(commandId);
+
+        model.addAttribute("expedition", expedition);
+        return "Expedition";
+    }
+
     /*
-    * Étape (3) et (4)
-    * Opération qui fait appel au microservice de commande pour placer une commande et récupérer les détails de la commande créée
-    * */
+     * Étape (3) et (4)
+     * Opération qui fait appel au microservice de commande pour placer une commande et récupérer les détails de la commande créée
+     * */
     @RequestMapping(value = "/commander-produit/{idProduit}/{montant}")
-    public String passerCommande(@PathVariable int idProduit, @PathVariable Double montant,  Model model){
+    public String passerCommande(@PathVariable int idProduit, @PathVariable Double montant, Model model) {
 
 
         CommandeBean commande = new CommandeBean();
@@ -89,6 +102,12 @@ public class ClientController {
 
         //appel du microservice commandes grâce à Feign et on récupère en retour les détails de la commande créée, notamment son ID (étape 4).
         CommandeBean commandeAjoutee = CommandesProxy.ajouterCommande(commande);
+
+        ExpeditionBean exp = new ExpeditionBean();
+        exp.commandId = commandeAjoutee.getId();
+        exp.state = "WAITING";
+
+        ExpeditionBean expeditionBean = expeditionProxy.addExpedition(exp);
 
         //on passe à la vue l'objet commande et le montant de celle-ci afin d'avoir les informations nécessaire pour le paiement
         model.addAttribute("commande", commandeAjoutee);

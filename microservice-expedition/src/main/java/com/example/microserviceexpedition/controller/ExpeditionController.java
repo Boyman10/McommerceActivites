@@ -18,6 +18,11 @@ public class ExpeditionController {
         return expeditionRepository.findAll();
     }
 
+    @GetMapping("/expeditions/{commandId}")
+    Expedition getByCommandId(@PathVariable Long commandId) {
+        return expeditionRepository.getByCommandId(commandId);
+    }
+
     @PutMapping("/expeditions/{id}")
     Expedition update(@RequestBody Expedition expedition, @PathVariable Long id) {
         return expeditionRepository.findById(id)

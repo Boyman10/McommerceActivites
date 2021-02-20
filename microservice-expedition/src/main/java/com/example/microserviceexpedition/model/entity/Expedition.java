@@ -1,11 +1,10 @@
 package com.example.microserviceexpedition.model.entity;
 
-import jdk.jfr.Enabled;
-
+import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
-@Enabled
+@Entity
 public class Expedition {
 
     @Id
